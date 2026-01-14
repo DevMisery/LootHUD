@@ -6,6 +6,7 @@ import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 import net.runelite.client.config.Keybind;
 import net.runelite.client.config.Range;
+import net.runelite.client.config.Alpha;
 
 @ConfigGroup("loothud")
 public interface LootHudConfig extends Config
@@ -60,6 +61,20 @@ public interface LootHudConfig extends Config
 	)
 	String groupingSection = "grouping";
 
+	@ConfigSection(
+			name = "Text Colors",
+			description = "Text color settings",
+			position = 7
+	)
+	String textColorsSection = "textColors";
+
+	@ConfigSection(
+			name = "Value Thresholds",
+			description = "Item value-based highlighting",
+			position = 8
+	)
+	String valueThresholdsSection = "valueThresholds";
+
 	// ========== GENERAL SECTION ==========
 	@ConfigItem(
 			keyName = "toggleKeybind",
@@ -86,54 +101,81 @@ public interface LootHudConfig extends Config
 	}
 
 	// ========== APPEARANCE SECTION ==========
+	@Alpha
 	@ConfigItem(
 			keyName = "backgroundColor",
 			name = "Background color",
-			description = "Color for loot entry backgrounds",
+			description = "Color for loot entry backgrounds (includes transparency)",
 			position = 0,
 			section = appearanceSection
 	)
 	default java.awt.Color backgroundColor()
 	{
-		return new java.awt.Color(0, 0, 0);
+		return new java.awt.Color(0, 0, 0, 180);
 	}
 
+	@Alpha
 	@ConfigItem(
-			keyName = "backgroundAlpha",
-			name = "Background transparency",
-			description = "Transparency level for background (0=invisible, 255=opaque)",
+			keyName = "headerBackgroundColor",
+			name = "Header background color",
+			description = "Separate background color for source name header",
 			position = 1,
 			section = appearanceSection
 	)
-	@Range(min = 0, max = 255)
-	default int backgroundAlpha()
+	default java.awt.Color headerBackgroundColor()
 	{
-		return 180;
+		return new java.awt.Color(40, 40, 40, 200);
 	}
 
+	@Alpha
 	@ConfigItem(
 			keyName = "borderColor",
 			name = "Border color",
-			description = "Color for loot entry borders",
+			description = "Color for loot entry borders (includes transparency)",
 			position = 2,
 			section = appearanceSection
 	)
 	default java.awt.Color borderColor()
 	{
-		return new java.awt.Color(100, 100, 100);
+		return new java.awt.Color(100, 100, 100, 150);
 	}
 
 	@ConfigItem(
-			keyName = "borderAlpha",
-			name = "Border transparency",
-			description = "Transparency level for borders (0=invisible, 255=opaque)",
+			keyName = "borderWidth",
+			name = "Border width",
+			description = "Width of the loot entry borders",
 			position = 3,
 			section = appearanceSection
 	)
-	@Range(min = 0, max = 255)
-	default int borderAlpha()
+	@Range(min = 0, max = 10)
+	default int borderWidth()
 	{
-		return 150;
+		return 1;
+	}
+
+	@ConfigItem(
+			keyName = "useGradient",
+			name = "Use gradient background",
+			description = "Use gradient instead of solid color",
+			position = 4,
+			section = appearanceSection
+	)
+	default boolean useGradient()
+	{
+		return false;
+	}
+
+	@Alpha
+	@ConfigItem(
+			keyName = "gradientEndColor",
+			name = "Gradient end color",
+			description = "End color for gradient background",
+			position = 5,
+			section = appearanceSection
+	)
+	default java.awt.Color gradientEndColor()
+	{
+		return new java.awt.Color(50, 50, 50, 180);
 	}
 
 	// ========== DISPLAY SECTION ==========
@@ -188,10 +230,35 @@ public interface LootHudConfig extends Config
 	}
 
 	@ConfigItem(
+			keyName = "fadeOutAnimation",
+			name = "Fade out animation",
+			description = "Gradually fade out entries when they expire",
+			position = 4,
+			section = displaySection
+	)
+	default boolean fadeOutAnimation()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+			keyName = "fadeOutDuration",
+			name = "Fade out duration",
+			description = "How long the fade out animation lasts (seconds)",
+			position = 5,
+			section = displaySection
+	)
+	@Range(min = 1, max = 10)
+	default int fadeOutDuration()
+	{
+		return 3;
+	}
+
+	@ConfigItem(
 			keyName = "showTotalValue",
 			name = "Show total value",
 			description = "Display total GE value of each loot pile",
-			position = 4,
+			position = 6,
 			section = displaySection
 	)
 	default boolean showTotalValue()
@@ -203,12 +270,48 @@ public interface LootHudConfig extends Config
 			keyName = "showLootTypeIcon",
 			name = "Show source type icon",
 			description = "Show small icon for loot source (NPC, player, etc.)",
-			position = 5,
+			position = 7,
 			section = displaySection
 	)
 	default boolean showLootTypeIcon()
 	{
 		return false;
+	}
+
+	@ConfigItem(
+			keyName = "showItemNames",
+			name = "Show item names",
+			description = "Display item names next to icons",
+			position = 8,
+			section = displaySection
+	)
+	default boolean showItemNames()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+			keyName = "itemNamePosition",
+			name = "Item name position",
+			description = "Where to show item names relative to icons",
+			position = 9,
+			section = displaySection
+	)
+	default ItemNamePosition itemNamePosition()
+	{
+		return ItemNamePosition.RIGHT;
+	}
+
+	@ConfigItem(
+			keyName = "tooltipOnHover",
+			name = "Tooltip on hover",
+			description = "Show item name tooltip when hovering over icons",
+			position = 10,
+			section = displaySection
+	)
+	default boolean tooltipOnHover()
+	{
+		return true;
 	}
 
 	// ========== ICONS SECTION ==========
@@ -278,7 +381,7 @@ public interface LootHudConfig extends Config
 	@ConfigItem(
 			keyName = "rareItemNames",
 			name = "Rare item list",
-			description = "Comma-separated list of item names to highlight<br>Example: Twisted bow, Scythe of vitur, Tumeken's shadow",
+			description = "Comma-separated list of item names to highlight<br>Supports wildcards: *bow, dragon *<br>Example: Twisted bow, Scythe of vitur, Tumeken's shadow, dragon *, *fire cape",
 			position = 1,
 			section = highlightSection
 	)
@@ -300,37 +403,24 @@ public interface LootHudConfig extends Config
 		return 1000000;
 	}
 
+	@Alpha
 	@ConfigItem(
 			keyName = "staticHighlightColor",
 			name = "Highlight color",
-			description = "Color for highlighting rare items",
+			description = "Color for highlighting rare items (includes transparency)",
 			position = 3,
 			section = highlightSection
 	)
 	default java.awt.Color staticHighlightColor()
 	{
-		return new java.awt.Color(255, 215, 0); // Gold color
+		return new java.awt.Color(255, 215, 0, 220);
 	}
 
-	@ConfigItem(
-			keyName = "staticHighlightAlpha",
-			name = "Highlight transparency",
-			description = "Transparency for highlight color (0-255)",
-			position = 4,
-			section = highlightSection
-	)
-	@Range(min = 0, max = 255)
-	default int staticHighlightAlpha()
-	{
-		return 220;
-	}
-
-	// Rainbow effect settings
 	@ConfigItem(
 			keyName = "rainbowAnimationSpeed",
 			name = "Rainbow speed",
 			description = "Speed of rainbow color cycling",
-			position = 5,
+			position = 4,
 			section = highlightSection
 	)
 	@Range(min = 1, max = 10)
@@ -343,7 +433,7 @@ public interface LootHudConfig extends Config
 			keyName = "rainbowAlpha",
 			name = "Rainbow transparency",
 			description = "Transparency for rainbow effect (0-255)",
-			position = 6,
+			position = 5,
 			section = highlightSection
 	)
 	@Range(min = 0, max = 255)
@@ -352,12 +442,11 @@ public interface LootHudConfig extends Config
 		return 200;
 	}
 
-	// Pulse effect settings
 	@ConfigItem(
 			keyName = "pulseAnimationSpeed",
 			name = "Pulse speed",
 			description = "Speed of pulsing animation",
-			position = 7,
+			position = 6,
 			section = highlightSection
 	)
 	@Range(min = 1, max = 10)
@@ -370,7 +459,7 @@ public interface LootHudConfig extends Config
 			keyName = "pulseAlphaRange",
 			name = "Pulse intensity",
 			description = "How much transparency changes during pulse",
-			position = 8,
+			position = 7,
 			section = highlightSection
 	)
 	@Range(min = 0, max = 255)
@@ -444,11 +533,23 @@ public interface LootHudConfig extends Config
 	@ConfigItem(
 			keyName = "ignoredItemNames",
 			name = "Ignored items",
-			description = "Comma-separated list of item names to hide from display<br>Example: Bones, Hammer, Coins",
+			description = "Comma-separated list of item names to hide from display<br>Supports wildcards: *gloves, bones*, *of the gods<br>Example: Bones, *gloves, Hammer, Coins",
 			position = 5,
 			section = filterSection
 	)
 	default String ignoredItemNames()
+	{
+		return "";
+	}
+
+	@ConfigItem(
+			keyName = "ignoredSources",
+			name = "Ignored sources",
+			description = "Comma-separated list of NPC/player names to hide loot from<br>Supports wildcards: *goblin, Bandit*, Lizardman*<br>Example: Man, *goblin, Cow",
+			position = 6,
+			section = filterSection
+	)
+	default String ignoredSources()
 	{
 		return "";
 	}
@@ -491,6 +592,267 @@ public interface LootHudConfig extends Config
 		return true;
 	}
 
+	// ========== TEXT COLORS SECTION ==========
+	@Alpha
+	@ConfigItem(
+			keyName = "sourceNameColor",
+			name = "Source name color",
+			description = "Color for source name text",
+			position = 0,
+			section = textColorsSection
+	)
+	default java.awt.Color sourceNameColor()
+	{
+		return new java.awt.Color(255, 255, 0, 255);
+	}
+
+	@Alpha
+	@ConfigItem(
+			keyName = "itemNameColor",
+			name = "Item name color",
+			description = "Color for regular item names",
+			position = 1,
+			section = textColorsSection
+	)
+	default java.awt.Color itemNameColor()
+	{
+		return new java.awt.Color(255, 255, 255, 255);
+	}
+
+	@Alpha
+	@ConfigItem(
+			keyName = "highlightedItemNameColor",
+			name = "Highlighted item name color",
+			description = "Color for highlighted/rare item names",
+			position = 2,
+			section = textColorsSection
+	)
+	default java.awt.Color highlightedItemNameColor()
+	{
+		return new java.awt.Color(255, 215, 0, 255);
+	}
+
+	@Alpha
+	@ConfigItem(
+			keyName = "valueTextColor",
+			name = "Value text color",
+			description = "Color for total value text",
+			position = 3,
+			section = textColorsSection
+	)
+	default java.awt.Color valueTextColor()
+	{
+		return new java.awt.Color(0, 255, 0, 255);
+	}
+
+	// ========== VALUE THRESHOLDS SECTION ==========
+	@ConfigItem(
+			keyName = "valueThreshold1",
+			name = "Low value items",
+			description = "First value threshold for item highlighting",
+			position = 0,
+			section = valueThresholdsSection
+	)
+	@Range(min = 0, max = 100000000)
+	default int valueThreshold1()
+	{
+		return 1000;
+	}
+
+	@Alpha
+	@ConfigItem(
+			keyName = "valueColor1",
+			name = "Text Color: Low",
+			description = "Text color for items above threshold 1",
+			position = 1,
+			section = valueThresholdsSection
+	)
+	default java.awt.Color valueColor1()
+	{
+		return new java.awt.Color(255, 255, 255, 255);
+	}
+
+	@Alpha
+	@ConfigItem(
+			keyName = "overlayColor1",
+			name = "Overlay Color: Low",
+			description = "Overlay color for total value above threshold 1",
+			position = 2,
+			section = valueThresholdsSection
+	)
+	default java.awt.Color overlayColor1()
+	{
+		return new java.awt.Color(0, 0, 0, 180);
+	}
+
+	@ConfigItem(
+			keyName = "valueThreshold2",
+			name = "Medium value items",
+			description = "Second value threshold for item highlighting",
+			position = 3,
+			section = valueThresholdsSection
+	)
+	@Range(min = 0, max = 100000000)
+	default int valueThreshold2()
+	{
+		return 10000;
+	}
+
+	@Alpha
+	@ConfigItem(
+			keyName = "valueColor2",
+			name = "Text Color: Medium",
+			description = "Text color for items above threshold 2",
+			position = 4,
+			section = valueThresholdsSection
+	)
+	default java.awt.Color valueColor2()
+	{
+		return new java.awt.Color(0, 255, 0, 255);
+	}
+
+	@Alpha
+	@ConfigItem(
+			keyName = "overlayColor2",
+			name = "Overlay Color: Medium",
+			description = "Overlay color for total value above threshold 2",
+			position = 5,
+			section = valueThresholdsSection
+	)
+	default java.awt.Color overlayColor2()
+	{
+		return new java.awt.Color(0, 40, 0, 180);
+	}
+
+	@ConfigItem(
+			keyName = "valueThreshold3",
+			name = "High value items",
+			description = "Third value threshold for item highlighting",
+			position = 6,
+			section = valueThresholdsSection
+	)
+	@Range(min = 0, max = 100000000)
+	default int valueThreshold3()
+	{
+		return 50000;
+	}
+
+	@Alpha
+	@ConfigItem(
+			keyName = "valueColor3",
+			name = "Text Color: High",
+			description = "Text color for items above threshold 3",
+			position = 7,
+			section = valueThresholdsSection
+	)
+	default java.awt.Color valueColor3()
+	{
+		return new java.awt.Color(0, 200, 255, 255);
+	}
+
+	@Alpha
+	@ConfigItem(
+			keyName = "overlayColor3",
+			name = "Overlay Color: High",
+			description = "Overlay color for total value above threshold 3",
+			position = 8,
+			section = valueThresholdsSection
+	)
+	default java.awt.Color overlayColor3()
+	{
+		return new java.awt.Color(0, 20, 40, 180);
+	}
+
+	@ConfigItem(
+			keyName = "valueThreshold4",
+			name = "Insane value items",
+			description = "Fourth value threshold for item highlighting",
+			position = 9,
+			section = valueThresholdsSection
+	)
+	@Range(min = 0, max = 100000000)
+	default int valueThreshold4()
+	{
+		return 250000;
+	}
+
+	@Alpha
+	@ConfigItem(
+			keyName = "valueColor4",
+			name = "Text Color: Insane",
+			description = "Text color for items above threshold 4",
+			position = 10,
+			section = valueThresholdsSection
+	)
+	default java.awt.Color valueColor4()
+	{
+		return new java.awt.Color(255, 165, 0, 255);
+	}
+
+	@Alpha
+	@ConfigItem(
+			keyName = "overlayColor4",
+			name = "Overlay Color: Insane",
+			description = "Overlay color for total value above threshold 4",
+			position = 11,
+			section = valueThresholdsSection
+	)
+	default java.awt.Color overlayColor4()
+	{
+		return new java.awt.Color(40, 20, 0, 180);
+	}
+
+	@ConfigItem(
+			keyName = "valueThreshold5",
+			name = "Legendary value items",
+			description = "Fifth value threshold for item highlighting",
+			position = 12,
+			section = valueThresholdsSection
+	)
+	@Range(min = 0, max = 100000000)
+	default int valueThreshold5()
+	{
+		return 1000000;
+	}
+
+	@Alpha
+	@ConfigItem(
+			keyName = "valueColor5",
+			name = "Text Color: Legendary",
+			description = "Text color for items above threshold 5",
+			position = 13,
+			section = valueThresholdsSection
+	)
+	default java.awt.Color valueColor5()
+	{
+		return new java.awt.Color(255, 0, 0, 255);
+	}
+
+	@Alpha
+	@ConfigItem(
+			keyName = "overlayColor5",
+			name = "Overlay Color: Legendary",
+			description = "Overlay color for total value above threshold 5",
+			position = 14,
+			section = valueThresholdsSection
+	)
+	default java.awt.Color overlayColor5()
+	{
+		return new java.awt.Color(40, 0, 0, 180);
+	}
+
+	@ConfigItem(
+			keyName = "valueBasedOverlay",
+			name = "Enable value-based overlay",
+			description = "Change overlay background color based on total value",
+			position = 15,
+			section = valueThresholdsSection
+	)
+	default boolean valueBasedOverlay()
+	{
+		return true;
+	}
+
 	// ========== ENUM DEFINITIONS ==========
 	enum RareItemHighlight
 	{
@@ -502,6 +864,25 @@ public interface LootHudConfig extends Config
 		private final String name;
 
 		RareItemHighlight(String name)
+		{
+			this.name = name;
+		}
+
+		@Override
+		public String toString()
+		{
+			return name;
+		}
+	}
+
+	enum ItemNamePosition
+	{
+		LEFT("Left"),
+		RIGHT("Right");
+
+		private final String name;
+
+		ItemNamePosition(String name)
 		{
 			this.name = name;
 		}

@@ -4,16 +4,16 @@
 
 
 
-A comprehensive loot tracking overlayq  that displays recent loot drops in a customizable, movable HUD overlay.
+A comprehensive loot tracking overlay  that displays recent loot drops in a customizable, movable HUD overlay.
 
 
 </div>
 
 ---
 
-## ✨ Features
+## Features
 
-### 🎯 Smart Loot Display
+### Smart Loot Display
 - Real-time loot notifications from:
     - NPC kills
     - Player kills
@@ -25,7 +25,7 @@ A comprehensive loot tracking overlayq  that displays recent loot drops in a cus
 
 ---
 
-### 🎨 Complete Visual Customization
+### Complete Visual Customization
 - Fully customizable colors and transparency
 - Adjustable background and border opacity
 - Resizable, draggable overlay with screen-edge snapping
@@ -38,7 +38,7 @@ A comprehensive loot tracking overlayq  that displays recent loot drops in a cus
 
 ---
 
-### ⚡ Advanced Filtering System
+### Advanced Filtering System
 - Filter loot by source type:
     - NPC
     - Player
@@ -50,7 +50,7 @@ A comprehensive loot tracking overlayq  that displays recent loot drops in a cus
 
 ---
 
-### 🌈 Rare Item Highlighting
+### Rare Item Highlighting
 - Multiple highlight effects:
     - Static
     - Pulse (Breathing)
@@ -62,7 +62,7 @@ A comprehensive loot tracking overlayq  that displays recent loot drops in a cus
 
 ---
 
-### 🔄 Smart Grouping System
+### Smart Grouping System
 - Group multiple kills from the same source into a single entry
 - Configurable kill-count display threshold
 - Optional reset of grouped data on logout
@@ -74,9 +74,11 @@ A comprehensive loot tracking overlayq  that displays recent loot drops in a cus
 
 <div align="center">
 
-![img_1.png](img_1.png)
-![img_2.png](img_2.png)
+![img.png](img.png)
 
+![img_3.png](img_3.png)
+
+![img_4.png](img_4.png)
 
 </div>
 
