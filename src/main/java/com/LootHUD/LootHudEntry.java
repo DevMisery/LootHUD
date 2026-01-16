@@ -84,7 +84,6 @@ class LootHudEntry
             return currentAlpha;
         }
 
-        // We're in the fade-out period
         // Calculate what percentage of the fade duration remains
         float fadeProgress = remaining / (float) fadeDurationMillis;
 

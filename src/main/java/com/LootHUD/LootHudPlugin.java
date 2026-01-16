@@ -29,7 +29,7 @@ import net.runelite.client.util.HotkeyListener;
 @PluginDescriptor(
 		name = "Loot HUD",
 		description = "Displays loot notifications in an in-game overlay",
-		tags = {"loot", "tracker", "overlay", "hud"}
+		tags = {"loot", "tracker", "overlay", "hud", "drops"}
 )
 public class LootHudPlugin extends Plugin
 {

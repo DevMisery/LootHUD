@@ -132,7 +132,7 @@ class LootHudOverlay extends Overlay
                 graphics.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
             }
 
-            // Apply fade-out animation if enabled
+            // Apply fade-out animation if enabled (slow)
             float currentAlpha = entry.getCurrentAlpha();
             if (config.fadeOutAnimation() && currentAlpha < 1.0f) {
                 if (originalComposite == null) {

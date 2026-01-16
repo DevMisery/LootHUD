@@ -80,12 +80,6 @@ class WildcardMatcher
         return true;
     }
 
-    /**
-     * Checks if text matches any pattern in the set.
-     * @param patterns Set of wildcard patterns
-     * @param text Text to match
-     * @return true if text matches any pattern
-     */
     public static boolean anyMatches(Set<String> patterns, String text)
     {
         if (patterns == null || patterns.isEmpty() || text == null)

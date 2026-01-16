@@ -169,7 +169,7 @@ public interface LootHudConfig extends Config
 	@ConfigItem(
 			keyName = "gradientEndColor",
 			name = "Gradient end color",
-			description = "End color for gradient background",
+			description = "End color for gradient background.",
 			position = 5,
 			section = appearanceSection
 	)
@@ -507,7 +507,7 @@ public interface LootHudConfig extends Config
 
 	@ConfigItem(
 			keyName = "includeEvents",
-			name = "Events/minigames",
+			name = "Events/minigames/Raids",
 			description = "Show loot from events, chests, and minigames",
 			position = 3,
 			section = filterSection
