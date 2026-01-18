@@ -88,17 +88,6 @@ public interface LootHudConfig extends Config
 		return Keybind.NOT_SET;
 	}
 
-	@ConfigItem(
-			keyName = "allowResizing",
-			name = "Allow resizing",
-			description = "Allow dragging edges to resize overlay",
-			position = 1,
-			section = generalSection
-	)
-	default boolean allowResizing()
-	{
-		return true;
-	}
 
 	// ========== APPEARANCE SECTION ==========
 	@Alpha
@@ -452,7 +441,7 @@ public interface LootHudConfig extends Config
 	@Range(min = 1, max = 10)
 	default int pulseAnimationSpeed()
 	{
-		return 5;
+		return 10;
 	}
 
 	@ConfigItem(
@@ -465,7 +454,7 @@ public interface LootHudConfig extends Config
 	@Range(min = 0, max = 255)
 	default int pulseAlphaRange()
 	{
-		return 80;
+		return 255;
 	}
 
 	// ========== FILTERING SECTION ==========

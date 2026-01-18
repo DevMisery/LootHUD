@@ -44,11 +44,11 @@ class LootHudOverlay extends Overlay
         this.config = config;
         this.itemManager = itemManager;
 
-        // Make overlay movable and dynamic
+        // Make overlay movable but NOT resizable - we'll handle sizing automatically
         setPosition(OverlayPosition.DYNAMIC);
         setPriority(OverlayPriority.HIGH);
         setMovable(true);
-        setResizable(config.allowResizing());
+        setResizable(false); // Disable user resizing - we handle it automatically
         setSnappable(true);
         setPreferredSize(null);
     }
@@ -87,30 +87,17 @@ class LootHudOverlay extends Overlay
         }
 
         // If no entries after filtering, don't render
-        if (maxWidth == 0) {
+        if (maxWidth == 0 || entriesCounted == 0) {
             return null;
         }
 
-        // Check if we should use fixed size or dynamic size
-        Dimension preferredSize = null;
-        if (config.allowResizing() && getPreferredSize() != null) {
-            // Use user's preferred size if resizing is allowed and set
-            preferredSize = getPreferredSize();
-
-            // Ensure minimum size
-            if (preferredSize.width < maxWidth) {
-                preferredSize.width = maxWidth;
-            }
-            if (preferredSize.height < totalHeight) {
-                preferredSize.height = totalHeight;
-            }
-        } else {
-            // Use calculated size
-            preferredSize = new Dimension(maxWidth, totalHeight);
+        // Subtract the extra 2 from the last entry
+        if (totalHeight > 2) {
+            totalHeight -= 2;
         }
 
-        // Update resizable property based on config
-        setResizable(config.allowResizing());
+        // ALWAYS return the exact size needed for current content
+        Dimension calculatedSize = new Dimension(maxWidth, totalHeight);
 
         // Draw each entry
         int yOffset = 0;
@@ -141,7 +128,10 @@ class LootHudOverlay extends Overlay
                 graphics.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, currentAlpha));
             }
 
-            yOffset += drawEntry(graphics, entry, yOffset, maxWidth, i);
+            // Calculate this entry's specific width
+            int entryWidth = calculateEntryWidth(graphics, entry);
+
+            yOffset += drawEntry(graphics, entry, yOffset, entryWidth, i);
 
             // Restore original composite if we changed it
             if (originalComposite != null) {
@@ -155,7 +145,7 @@ class LootHudOverlay extends Overlay
             }
         }
 
-        return preferredSize;
+        return calculatedSize;
     }
 
     private int calculateEntryWidth(Graphics2D graphics, LootHudEntry entry)
@@ -188,7 +178,11 @@ class LootHudOverlay extends Overlay
 
             return maxItemWidth + (PADDING * 2);
         } else {
+            // Grid mode: calculate width based on icons per row
             int iconsPerRow = Math.min(config.iconsPerRow(), 8);
+            int numIconsToShow = Math.min(entry.getItems().size(), config.maxIconsPerEntry());
+
+            // Use full row width even if we have fewer items in the last row
             return (iconsPerRow * (ITEM_SIZE + ITEM_GAP)) - ITEM_GAP + (PADDING * 2);
         }
     }
@@ -200,6 +194,7 @@ class LootHudOverlay extends Overlay
             int numItemsToShow = Math.min(entry.getItems().size(), config.maxIconsPerEntry());
             return HEADER_HEIGHT + (numItemsToShow * (ITEM_SIZE + ITEM_GAP)) - ITEM_GAP + (PADDING * 2);
         } else {
+            // Grid mode: calculate height based on rows needed
             int iconsPerRow = Math.min(config.iconsPerRow(), 8);
             int numIconsToShow = Math.min(entry.getItems().size(), config.maxIconsPerEntry());
             int rows = (int) Math.ceil((double) numIconsToShow / iconsPerRow);
@@ -228,7 +223,7 @@ class LootHudOverlay extends Overlay
         return maxAlpha - t * (maxAlpha - minAlpha);
     }
 
-    private int drawEntry(Graphics2D graphics, LootHudEntry entry, int yOffset, int maxWidth, int position)
+    private int drawEntry(Graphics2D graphics, LootHudEntry entry, int yOffset, int entryWidth, int position)
     {
         int entryHeight = calculateEntryHeight(entry);
 
@@ -240,108 +235,95 @@ class LootHudOverlay extends Overlay
         Color headerBackgroundColor = config.headerBackgroundColor();
         Color gradientEndColor = config.gradientEndColor();
 
-        // Apply value-based overlay colors if enabled and not a rare entry
-        if (config.valueBasedOverlay() && !entry.isRare()) {
-            backgroundColor = plugin.getOverlayValueColor(entry.getTotalValue());
-            headerBackgroundColor = plugin.getHeaderValueColor(entry.getTotalValue());
+        // Check if we have a special color for this entry (value thresholds or rare highlight)
+        Color specialColor = null;
+        Color specialHeaderColor = null;
 
-            // For gradient end color with value-based overlay, create a slightly darker version
-            gradientEndColor = new Color(
-                    Math.max(0, backgroundColor.getRed() - 30),
-                    Math.max(0, backgroundColor.getGreen() - 30),
-                    Math.max(0, backgroundColor.getBlue() - 30),
-                    backgroundColor.getAlpha()
-            );
-        } else {
-            // Use the configured gradient end color when value-based overlay is disabled or entry is rare
-            gradientEndColor = config.gradientEndColor();
-        }
-
-        // Draw header background
-        graphics.setColor(headerBackgroundColor);
-        graphics.fillRect(0, yOffset, maxWidth, HEADER_HEIGHT);
-
-        // Draw main background
-        if (config.useGradient()) {
-            GradientPaint gradient = new GradientPaint(
-                    0, yOffset + HEADER_HEIGHT, backgroundColor,
-                    0, yOffset + entryHeight, gradientEndColor
-            );
-            graphics.setPaint(gradient);
-            graphics.fillRect(0, yOffset + HEADER_HEIGHT, maxWidth, entryHeight - HEADER_HEIGHT);
-        } else {
-            graphics.setColor(backgroundColor);
-            graphics.fillRect(0, yOffset + HEADER_HEIGHT, maxWidth, entryHeight - HEADER_HEIGHT);
-        }
-
-        // Check if this is a rare entry and which highlight mode is active
+        // First check for rare highlight
         boolean isRare = entry.isRare();
         LootHudConfig.RareItemHighlight highlightMode = config.rareItemHighlight();
-
-        // Only apply highlight to individual (non-grouped) entries
         boolean shouldHighlight = isRare &&
                 highlightMode != LootHudConfig.RareItemHighlight.OFF &&
                 !entry.isGrouped();
-
-        // Apply highlight if rare and highlight mode is not OFF and entry is not grouped
-        Color headerHighlightColor = null;
-        Color bodyHighlightColor = null;
 
         if (shouldHighlight) {
             if (highlightMode == LootHudConfig.RareItemHighlight.RAINBOW) {
                 // Create animated rainbow effect
                 Color rainbowColor = getRainbowColor(position);
-                headerHighlightColor = new Color(
+                specialColor = new Color(
                         rainbowColor.getRed(),
                         rainbowColor.getGreen(),
                         rainbowColor.getBlue(),
                         config.rainbowAlpha()
                 );
-                bodyHighlightColor = new Color(
-                        rainbowColor.getRed(),
-                        rainbowColor.getGreen(),
-                        rainbowColor.getBlue(),
-                        config.rainbowAlpha() - 30
-                );
-
-                // Apply to header
-                graphics.setColor(headerHighlightColor);
-                graphics.fillRect(0, yOffset, maxWidth, HEADER_HEIGHT);
+                specialHeaderColor = specialColor;
             } else if (highlightMode == LootHudConfig.RareItemHighlight.STATIC) {
                 // Use static highlight color (with alpha already included)
-                Color highlightColor = config.staticHighlightColor();
-                headerHighlightColor = highlightColor;
-                bodyHighlightColor = new Color(
-                        highlightColor.getRed(),
-                        highlightColor.getGreen(),
-                        highlightColor.getBlue(),
-                        Math.max(0, highlightColor.getAlpha() - 50)
-                );
-
-                graphics.setColor(headerHighlightColor);
-                graphics.fillRect(0, yOffset, maxWidth, HEADER_HEIGHT);
+                specialColor = config.staticHighlightColor();
+                specialHeaderColor = specialColor;
             } else if (highlightMode == LootHudConfig.RareItemHighlight.PULSE) {
                 // New pulse effect
                 Color highlightColor = config.staticHighlightColor();
-
-                // Calculate pulsing alpha
                 int pulseAlpha = getPulseAlpha(highlightColor.getAlpha(), config.pulseAlphaRange(), position);
-                headerHighlightColor = new Color(
+                specialColor = new Color(
                         highlightColor.getRed(),
                         highlightColor.getGreen(),
                         highlightColor.getBlue(),
                         pulseAlpha
                 );
-                bodyHighlightColor = new Color(
-                        highlightColor.getRed(),
-                        highlightColor.getGreen(),
-                        highlightColor.getBlue(),
-                        Math.max(0, pulseAlpha - 50)
-                );
-
-                graphics.setColor(headerHighlightColor);
-                graphics.fillRect(0, yOffset, maxWidth, HEADER_HEIGHT);
+                specialHeaderColor = specialColor;
             }
+        }
+        // If not a rare highlight, check for value threshold
+        else if (config.valueBasedOverlay()) {
+            specialColor = plugin.getOverlayValueColor(entry.getTotalValue());
+            specialHeaderColor = plugin.getHeaderValueColor(entry.getTotalValue());
+
+            // If the special color is the same as background, don't treat it as special
+            // This happens for values below threshold1
+            if (specialColor.equals(backgroundColor)) {
+                specialColor = null;
+                specialHeaderColor = null;
+            }
+        }
+
+        // Draw header background (always solid)
+        Color headerColor = specialHeaderColor != null ? specialHeaderColor : headerBackgroundColor;
+        graphics.setColor(headerColor);
+        graphics.fillRect(0, yOffset, entryWidth, HEADER_HEIGHT);
+
+        // Draw main background with gradient or solid
+        if (config.useGradient()) {
+            // Always use gradient from normal background at TOP to special/gradient color at BOTTOM
+            Color topColor = backgroundColor;
+            Color bottomColor;
+
+            if (specialColor != null) {
+                // For value thresholds or rare highlights: fade to special color
+                bottomColor = specialColor;
+            } else {
+                // For normal drops: fade to configured gradient end color
+                bottomColor = gradientEndColor;
+            }
+
+            GradientPaint gradient = new GradientPaint(
+                    0, yOffset + HEADER_HEIGHT, topColor,      // Start at top with normal background
+                    0, yOffset + entryHeight, bottomColor      // End at bottom with special/gradient color
+            );
+            graphics.setPaint(gradient);
+            graphics.fillRect(0, yOffset + HEADER_HEIGHT, entryWidth, entryHeight - HEADER_HEIGHT);
+        } else {
+            // Solid color mode
+            Color bodyColor;
+            if (specialColor != null) {
+                // Use special color for value thresholds or rare highlights
+                bodyColor = specialColor;
+            } else {
+                // Use normal background color for normal drops
+                bodyColor = backgroundColor;
+            }
+            graphics.setColor(bodyColor);
+            graphics.fillRect(0, yOffset + HEADER_HEIGHT, entryWidth, entryHeight - HEADER_HEIGHT);
         }
 
         // Draw border with configurable width
@@ -373,7 +355,7 @@ class LootHudOverlay extends Overlay
             graphics.drawRect(
                     borderWidth / 2,
                     yOffset + borderWidth / 2,
-                    maxWidth - borderWidth,
+                    entryWidth - borderWidth,
                     entryHeight - borderWidth
             );
             graphics.setStroke(new BasicStroke(1));
@@ -404,7 +386,7 @@ class LootHudOverlay extends Overlay
         String displayName = entry.getSourceName();
 
         // Truncate if too long
-        int availableWidth = maxWidth - (PADDING * 2) - textXOffset;
+        int availableWidth = entryWidth - (PADDING * 2) - textXOffset;
         if (config.showTotalValue()) {
             // Reserve space for value text
             availableWidth -= 80; // Approximate width for value text
@@ -445,7 +427,7 @@ class LootHudOverlay extends Overlay
             }
 
             OverlayUtil.renderTextLocation(graphics,
-                    new Point(maxWidth - PADDING - textWidth, textY),
+                    new Point(entryWidth - PADDING - textWidth, textY),
                     valueText,
                     valueColor);
         }
@@ -453,16 +435,16 @@ class LootHudOverlay extends Overlay
         // Draw item icons and names
         if (config.showItemIcons() && !entry.getItems().isEmpty()) {
             if (config.showItemNames()) {
-                drawItemsWithNames(graphics, entry, yOffset, maxWidth);
+                drawItemsWithNames(graphics, entry, yOffset, entryWidth);
             } else {
-                drawItemsInGrid(graphics, entry, yOffset, maxWidth);
+                drawItemsInGrid(graphics, entry, yOffset, entryWidth);
             }
         }
 
         return entryHeight + 2;
     }
 
-    private void drawItemsWithNames(Graphics2D graphics, LootHudEntry entry, int yOffset, int maxWidth)
+    private void drawItemsWithNames(Graphics2D graphics, LootHudEntry entry, int yOffset, int entryWidth)
     {
         int numItemsToShow = Math.min(entry.getItems().size(), config.maxIconsPerEntry());
         int startY = yOffset + HEADER_HEIGHT + PADDING;
@@ -505,20 +487,27 @@ class LootHudOverlay extends Overlay
                     {
                         // Draw name on left, icon on right
                         int textWidth = graphics.getFontMetrics().stringWidth(itemName);
-                        OverlayUtil.renderTextLocation(graphics,
-                                new Point(x, y + ITEM_SIZE / 2 + 6),
-                                itemName,
-                                itemColor);
-                        graphics.drawImage(itemImage, x + textWidth + ITEM_NAME_PADDING, y, null);
+                        // Check if we have enough space
+                        if (textWidth + ITEM_SIZE + PADDING <= entryWidth) {
+                            OverlayUtil.renderTextLocation(graphics,
+                                    new Point(x, y + ITEM_SIZE / 2 + 6),
+                                    itemName,
+                                    itemColor);
+                            graphics.drawImage(itemImage, x + textWidth + ITEM_NAME_PADDING, y, null);
+                        }
                     }
                     else if (config.itemNamePosition() == LootHudConfig.ItemNamePosition.RIGHT)
                     {
                         // Draw icon on left, name on right
                         graphics.drawImage(itemImage, x, y, null);
-                        OverlayUtil.renderTextLocation(graphics,
-                                new Point(x + ITEM_SIZE + ITEM_NAME_PADDING, y + ITEM_SIZE / 2 + 6),
-                                itemName,
-                                itemColor);
+                        // Check if we have enough space for text
+                        int textX = x + ITEM_SIZE + ITEM_NAME_PADDING;
+                        if (textX + graphics.getFontMetrics().stringWidth(itemName) <= entryWidth - PADDING) {
+                            OverlayUtil.renderTextLocation(graphics,
+                                    new Point(textX, y + ITEM_SIZE / 2 + 6),
+                                    itemName,
+                                    itemColor);
+                        }
                     }
                 }
             }
@@ -534,7 +523,7 @@ class LootHudOverlay extends Overlay
         }
     }
 
-    private void drawItemsInGrid(Graphics2D graphics, LootHudEntry entry, int yOffset, int maxWidth)
+    private void drawItemsInGrid(Graphics2D graphics, LootHudEntry entry, int yOffset, int entryWidth)
     {
         int iconsPerRow = Math.min(config.iconsPerRow(), 8);
         int numIconsToShow = Math.min(entry.getItems().size(), config.maxIconsPerEntry());
@@ -554,9 +543,12 @@ class LootHudOverlay extends Overlay
             int x = PADDING + col * (ITEM_SIZE + ITEM_GAP);
             int y = yOffset + HEADER_HEIGHT + PADDING + row * (ITEM_SIZE + ITEM_GAP);
 
-            BufferedImage itemImage = getItemImage(item);
-            if (itemImage != null) {
-                graphics.drawImage(itemImage, x, y, null);
+            // Check if this position is within the entry bounds
+            if (x + ITEM_SIZE <= entryWidth - PADDING) {
+                BufferedImage itemImage = getItemImage(item);
+                if (itemImage != null) {
+                    graphics.drawImage(itemImage, x, y, null);
+                }
             }
 
             iconIndex++;
@@ -572,16 +564,19 @@ class LootHudOverlay extends Overlay
             int x = PADDING + (lastCol) * (ITEM_SIZE + ITEM_GAP);
             int y = yOffset + HEADER_HEIGHT + PADDING + lastRow * (ITEM_SIZE + ITEM_GAP);
 
-            graphics.setColor(new Color(60, 60, 60, 200));
-            graphics.fillRect(x, y, ITEM_SIZE, ITEM_SIZE);
+            // Check if indicator is within bounds
+            if (x + ITEM_SIZE <= entryWidth - PADDING) {
+                graphics.setColor(new Color(60, 60, 60, 200));
+                graphics.fillRect(x, y, ITEM_SIZE, ITEM_SIZE);
 
-            graphics.setColor(Color.LIGHT_GRAY);
-            String plusText = "+" + remaining;
-            int textWidth = graphics.getFontMetrics().stringWidth(plusText);
-            OverlayUtil.renderTextLocation(graphics,
-                    new Point(x + (ITEM_SIZE - textWidth) / 2, y + 18),
-                    plusText,
-                    Color.LIGHT_GRAY);
+                graphics.setColor(Color.LIGHT_GRAY);
+                String plusText = "+" + remaining;
+                int textWidth = graphics.getFontMetrics().stringWidth(plusText);
+                OverlayUtil.renderTextLocation(graphics,
+                        new Point(x + (ITEM_SIZE - textWidth) / 2, y + 18),
+                        plusText,
+                        Color.LIGHT_GRAY);
+            }
         }
     }
 
